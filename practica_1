@@ -1,0 +1,94 @@
+# Eli Joseph Alvarez Guillen y David Enrique Vela Contreras
+
+.data
+discos: .word 3 # constante de 4 bytes para el numero de discos
+
+.text
+
+inicio:
+    la t3, discos         # Carga en t3 la dirección de la variable discos
+    lw t1, 0(t3)          # Carga el valor almacenado en la variable discos en el registro t1
+
+    addi t5, x0, 0        # Inicializa t5 como 0, utilizado como reemplazo del registro zero
+    addi t0, t5, 0        # Inicializa t0 como contador de pasos en 0
+    addi s0, t5, 32       # Asigna el valor 32 al registro s0, utilizado como espaciado
+    addi t2, t5, 4        # Asigna el valor 4 al registro t2, que representa el desplazamiento entre torres
+
+    lui a0, 0x10010       # Inicializa a0 con la dirección base de la Torre A
+    add a1, a0, t2        # Calcula la dirección de la Torre B sumando el desplazamiento (4) a la dirección de Torre A
+    add a2, a1, t2        # Calcula la dirección de la Torre C sumando el desplazamiento (4) a la dirección de Torre B
+
+    slli t3, t1, 5        # Calcula el desplazamiento total para las torres B y C: t1 * 32
+    add a1, a1, t3        # Ajusta la dirección de inicio de la Torre B aplicando el desplazamiento
+    add a2, a2, t3        # Ajusta la dirección de inicio de la Torre C aplicando el desplazamiento
+
+    addi t4, t5, 0        #  indice i en 0 para el ciclo
+    addi t6, t1, -1       # Calcula el tope del índice como (número de discos - 1)
+
+loop_inicial:
+    blt t6, t4, fin_loop_inicial  # Si i >= tope, termina el bucle de inicialización
+    add t3, t5, a0                # Establece la dirección base de Torre A en t3
+    slli t3, t4, 5                # Calcula el desplazamiento del disco actual (i * 32)
+    add t3, t3, a0                # Calcula la dirección final donde se colocará el disco en Torre A
+    addi s1, t4, 1                # Calcula el número del disco (i + 1)
+    sw s1, 0(t3)                  # Guarda el disco en la dirección calculada
+    addi t4, t4, 1                # Incrementa el índice i
+    j loop_inicial                # Repite el bucle
+
+fin_loop_inicial:
+    jal mover_hanoi               # Llama a la función 'mover_hanoi' para iniciar el movimiento de los discos
+    j salir                       # Salta a la etiqueta 'salir' para finalizar el programa
+
+mover_hanoi:
+    addi s2, t5, 1                # Establece s2 en 1, utilizado para detectar el caso base
+
+caso_base:
+    bne t1, s2, recursivo         # Si t1 != 1, salta a la función 'recursivo'
+    sw t5, 0(a0)                  # Elimina el disco de la Torre A
+    addi a0, a0, 32               # Mueve el puntero de Torre A hacia adelante
+    addi a2, a2, -32              # Mueve el puntero de Torre C hacia atrás
+    sw t1, 0(a2)                  # Coloca el disco en Torre C
+    addi t0, t0, 1                # Incrementa el contador de pasos
+    jalr ra                       # Regresa al punto de llamada
+
+recursivo:
+    addi sp, sp, -8               # Reserva espacio en la pila para dos registros
+    sw ra, 4(sp)                  # Guarda el registro de retorno (ra) en la pila
+    sw t1, 0(sp)                  # Guarda el valor actual de t1 en la pila
+
+    addi t1, t1, -1               # Reduce el número de discos en 1
+
+    add t3, a1, t5                # Intercambia las torres: Torre B -> t3
+    add a1, a2, t5                # Torre C -> B
+    add a2, t3, t5                # t3 -> C
+
+    jal mover_hanoi               # Llama recursivamente para resolver el subproblema
+
+    add t3, a1, t5                # Restaura el orden original de las torres
+    add a1, a2, t5                # Torre C -> B
+    add a2, t3, t5                # t3 -> C
+
+    sw t5, 0(a0)                  # Elimina el disco de Torre A
+    addi a0, a0, 32               # Mueve el puntero de Torre A hacia adelante
+    addi a2, a2, -32              # Mueve el puntero de Torre C hacia atrás
+    sw t1, 0(a2)                  # Coloca el disco en Torre C
+    addi t0, t0, 1                # Incrementa el contador de pasos
+
+    add t3, a0, t5                # Intercambia las torres: Torre A -> t3
+    add a0, a1, t5                # Torre B -> A
+    add a1, t3, t5                # t3 -> B
+
+    jal mover_hanoi               # Llama recursivamente para resolver el siguiente subproblema
+
+    add t3, a0, t5                # Restaura el orden original de las torres
+    add a0, a1, t5                # Torre B -> A
+    add a1, t3, t5                # t3 -> B
+
+    lw t1, 0(sp)                  # Restaura el valor original de t1 desde la pila
+    lw ra, 4(sp)                  # Restaura el registro de retorno (ra) desde la pila
+    addi sp, sp, 8                # Libera espacio en la pila
+
+    jalr ra                       # Regresa al punto de llamada
+
+salir:
+
